@@ -8,9 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-// import org.springframework.web.client.RestTemplate;
-import org.springframework.http.*;
-
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import java.util.Map;
 
 @Service
@@ -25,7 +25,6 @@ public class PolarService {
     private String webhookSecret;
 
     private final UserRepository userRepository;
-    // private final RestTemplate restTemplate = new RestTemplate();
 
     private static final String POLAR_API_URL = "https://api.polar.sh/v1";
 
@@ -39,11 +38,7 @@ public class PolarService {
         }
 
         // 2. Create Checkout Session
-        String url = POLAR_API_URL + "/checkouts/custom/sessions"; // Verify endpoint from docs
-        // Note: Actual endpoint might differ. Assuming standard checkout creation.
-        // For Polar, it's often creating a checkout link or session.
-        // Let's assume a generic implementation pattern or use a known endpoint.
-        // Polar API: POST /v1/checkouts/custom/
+        String url = POLAR_API_URL + "/checkouts/custom/sessions";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(polarAccessToken);
@@ -52,35 +47,55 @@ public class PolarService {
         // Body payload
         Map<String, Object> body = Map.of(
                 "customer_id", polarCustomerId,
-                "product_price_id", priceId,
-                "success_url", "http://localhost:3000/dashboard?success=true" // configure properly
+                "product_price_id", priceId, // Ensure this ID is valid in Polar
+                "success_url", "http://localhost:3000/home?success=true");
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        try {
+            // Real Call to Polar API
+            var response = new org.springframework.web.client.RestTemplate().postForEntity(url, entity, Map.class);
+
+            if (response.getBody() != null && response.getBody().containsKey("url")) {
+                return (String) response.getBody().get("url");
+            } else {
+                throw new RuntimeException("No URL in response");
+            }
+
+        } catch (Exception e) {
+            log.error("Failed to create checkout session", e);
+            throw new RuntimeException("Billing service unavailable: " + e.getMessage());
+        }
+    }
+
+    private String createPolarCustomer(User user) {
+        // Create Polar Customer
+        String url = POLAR_API_URL + "/customers";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(polarAccessToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        // Assuming user.getEmail() acts as a unique identifier or we send email
+        Map<String, Object> body = Map.of(
+                "email", user.getEmail(),
+                "name", "User " + user.getId() // Customize as needed
         );
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
         try {
-            // This is a placeholder call detailed implementation depends on exact Polar API
-            // spec
-            // ResponseEntity<Map> response = restTemplate.postForEntity(url, entity,
-            // Map.class);
-            // return (String) response.getBody().get("url");
+            var response = new org.springframework.web.client.RestTemplate().postForEntity(url, entity, Map.class);
 
-            // To avoid unused warnings in this template:
-            log.debug("Mocking call to {} with payload {}", url, entity);
-
-            return "https://polar.sh/checkout/mock-session";
+            if (response.getBody() != null && response.getBody().containsKey("id")) {
+                return (String) response.getBody().get("id");
+            }
+            throw new RuntimeException("No Customer ID in response");
         } catch (Exception e) {
-            log.error("Failed to create checkout session", e);
-            throw new RuntimeException("Billing service unavailable");
+            log.error("Failed to create polar customer", e);
+            // Verify if customer already exists if status 409 or similar, but for now throw
+            throw new RuntimeException("Billing service unavailable: " + e.getMessage());
         }
-    }
-
-    private String createPolarCustomer(User user) {
-        // Implement customer creation logic
-        log.info("Creating Polar customer for user {}", user.getId());
-        // Call Polar API to create customer
-        // Return ID
-        return "polar_customer_" + user.getId();
     }
 
     @Transactional
@@ -90,17 +105,34 @@ public class PolarService {
 
         log.info("Processing webhook event: {}", eventType);
 
-        // Parse payload to find customer and subscription status
-        // Example logic:
-        if ("subscription.created".equals(eventType) || "subscription.updated".equals(eventType)) {
-            // Extract customer ID and status
-            String customerId = "extract_from_payload";
-            String status = "active"; // map from payload
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(payload);
 
-            userRepository.findByPolarCustomerId(customerId).ifPresent(user -> {
-                user.setSubscriptionStatus(mapAppStatus(status));
-                userRepository.save(user);
-            });
+            if ("subscription.created".equals(eventType) || "subscription.updated".equals(eventType)) {
+
+                // Polar payload structure for subscription events typically wraps data in
+                // "data"
+                // e.g. { "type": "...", "data": { "customer_id": "...", "status": "..." } }
+                // or sometimes flat. Assuming standard webhook structure:
+                com.fasterxml.jackson.databind.JsonNode data = root.has("data") ? root.get("data") : root;
+
+                if (data.has("customer_id") && data.has("status")) {
+                    String customerId = data.get("customer_id").asText();
+                    String status = data.get("status").asText();
+
+                    log.info("Updating subscription for customer {}: {}", customerId, status);
+
+                    userRepository.findByPolarCustomerId(customerId).ifPresent(user -> {
+                        user.setSubscriptionStatus(mapAppStatus(status));
+                        userRepository.save(user);
+                    });
+                } else {
+                    log.warn("Webhook payload missing customer_id or status");
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error processing webhook payload", e);
         }
     }
 
