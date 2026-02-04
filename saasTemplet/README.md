@@ -67,14 +67,21 @@ The app uses H2 in-memory database by default.
 
 ## API Endpoints
 
+### User & Billing
 - `GET /me` - Get current user profile (Requires JWT)
 - `POST /billing/checkout` - Create checkout session (Requires JWT)
 - `POST /webhooks/polar` - Handle Polar webhooks (Public)
 
+### Todo Management
+- `GET /api/todos` - List user's todos (Requires JWT)
+- `POST /api/todos` - Create a new todo (Requires JWT)
+- `PUT /api/todos/{id}/toggle` - Toggle todo completion (Requires JWT)
+- `DELETE /api/todos/{id}` - Delete a todo (Requires JWT)
+
 ## Project Structure
-- `model`: JPA Entities (`User`)
-- `repository`: Data Access (`UserRepository`)
-- `service`: Business Logic (`UserService`, `PolarService`)
-- `controller`: REST Endpoints
+- `model`: JPA Entities (`User`, `Todo`)
+- `repository`: Data Access (`UserRepository`, `TodoRepository`)
+- `service`: Business Logic (`UserService`, `PolarService`, `TodoService`)
+- `controller`: REST Endpoints (`MeController`, `BillingController`, `TodoController`, `WebhookController`)
 - `config`: Security & App Config
 

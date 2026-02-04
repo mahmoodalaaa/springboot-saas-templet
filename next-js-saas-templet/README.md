@@ -55,7 +55,14 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Project Structure
 - `src/app`: App Router pages
   - `page.tsx`: Landing page (Public)
-  - `app/page.tsx`: Dashboard (Protected, checks subscription)
-  - `paywall/page.tsx`: Upgrade page (Protected)
+  - `home/page.tsx`: Todo Dashboard (Protected, requires active subscription)
+  - `paywall/page.tsx`: Pricing/Plan Selection page (Protected)
+  - `profile/page.tsx`: User Profile page (Protected)
 - `src/components/providers/AuthProvider.tsx`: Auth0 Context Provider
 - `src/lib/api.ts`: Authenticated fetch helper
+
+## User Flow
+1. **Login**: User clicks "Login" on landing page → Auth0 authentication
+2. **Plan Selection**: After login, redirected to `/paywall` to choose a plan (Free, Basic, or Pro)
+3. **Dashboard**: After selecting a plan, user lands on `/home` (Todo Dashboard)
+4. **Profile**: User can view their profile at `/profile` via the "My Profile" button
