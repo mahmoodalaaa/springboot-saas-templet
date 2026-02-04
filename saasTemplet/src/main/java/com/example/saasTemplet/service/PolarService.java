@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
+// import org.springframework.web.client.RestTemplate;
 import org.springframework.http.*;
 
 import java.util.Map;
@@ -25,7 +25,7 @@ public class PolarService {
     private String webhookSecret;
 
     private final UserRepository userRepository;
-    private final RestTemplate restTemplate = new RestTemplate();
+    // private final RestTemplate restTemplate = new RestTemplate();
 
     private static final String POLAR_API_URL = "https://api.polar.sh/v1";
 
