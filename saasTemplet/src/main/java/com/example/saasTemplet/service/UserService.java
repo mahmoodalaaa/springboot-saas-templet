@@ -20,6 +20,7 @@ public class UserService {
 
     @Transactional
     public User syncUser(Jwt jwt) {
+        log.info("Syncing user with JWT claims: {}", jwt.getClaims());
         String auth0UserId = jwt.getSubject();
         String email = jwt.getClaimAsString("email");
         String firstName = jwt.getClaimAsString("given_name");
@@ -44,6 +45,11 @@ public class UserService {
                 user.setLastName(lastName);
                 updated = true;
             }
+            // Ensure existing users have a plan
+            if (user.getPlan() == null) {
+                user.setPlan("Free");
+                updated = true;
+            }
 
             if (updated) {
                 log.info("Updating user info for: {}", auth0UserId);
@@ -57,7 +63,8 @@ public class UserService {
                     .email(email != null ? email : "")
                     .firstName(firstName)
                     .lastName(lastName)
-                    .subscriptionStatus(SubscriptionStatus.NONE)
+                    .plan("Free")
+                    .subscriptionStatus(SubscriptionStatus.ACTIVE)
                     .build();
             return userRepository.save(newUser);
         }

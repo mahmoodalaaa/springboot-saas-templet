@@ -49,6 +49,16 @@ You will need an Auth0 account to handle user logins securely.
    - **Domain**: This is `NEXT_PUBLIC_AUTH0_DOMAIN`.
    - **Client ID**: This is `NEXT_PUBLIC_AUTH0_CLIENT_ID`.
 
+#### C. **IMPORTANT: Authorize the Frontend to Access the API**
+1. Go back to **Applications -> APIs**.
+2. Click on your API: `SaaS Backend` (the one you created in step A).
+3. Click on the **Test** tab.
+4. Scroll down and find the section that says **"Authorize Test Application"** or look for your `SaaS Frontend` application.
+5. **Toggle ON** or **Authorize** your `SaaS Frontend` application to access this API.
+6. **Save** if needed.
+
+> **Why?** By default, Auth0 doesn't allow applications to request tokens for APIs. You must explicitly authorize your frontend app to access your backend API.
+
 ---
 
 ### 2. Polar.sh Setup (Billing)

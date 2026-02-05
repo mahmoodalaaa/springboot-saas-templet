@@ -78,7 +78,7 @@ export default function Paywall() {
                             <li className="flex items-center gap-2"><Check size={18} className="text-green-500" /> Priority Support</li>
                         </ul>
                         <button
-                            onClick={() => handleUpgrade("price_basic_123")}
+                            onClick={() => handleUpgrade("7c142184-ec8a-41bf-a2a5-0110ca275fcf")}
                             disabled={loading}
                             className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50"
                         >

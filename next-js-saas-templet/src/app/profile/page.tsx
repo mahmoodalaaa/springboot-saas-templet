@@ -39,7 +39,7 @@ export default function ProfilePage() {
                 setUserData(data);
 
                 // Enforce plan selection logic if desired, or just show empty state
-                if (data.subscriptionStatus !== "ACTIVE") router.push("/paywall");
+                // if (data.subscriptionStatus !== "ACTIVE") router.push("/paywall");
             } catch (error) {
                 console.error("Failed to load profile", error);
             } finally {

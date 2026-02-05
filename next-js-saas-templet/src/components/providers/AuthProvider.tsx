@@ -40,6 +40,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
                     authorizationParams: {
                         redirect_uri: typeof window !== "undefined" ? window.location.origin : undefined,
                         audience: process.env.NEXT_PUBLIC_AUTH0_AUDIENCE,
+                        scope: "openid profile email",
                     },
                     cacheLocation: "localstorage",
                 });

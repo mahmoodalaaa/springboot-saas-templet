@@ -120,6 +120,14 @@ export default function HomePage() {
                     )}
                 </div>
                 <div className="flex items-center gap-4">
+                    {subscriptionStatus === "ACTIVE" && (
+                        <button
+                            onClick={() => router.push("/welcome")}
+                            className="text-sm font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all"
+                        >
+                            Special Welcome
+                        </button>
+                    )}
                     <button
                         onClick={() => router.push("/profile")}
                         className="text-sm font-medium text-gray-600 hover:text-black hover:bg-gray-100 px-3 py-2 rounded-lg transition-colors hidden md:block"

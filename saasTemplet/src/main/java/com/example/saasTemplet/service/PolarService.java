@@ -39,6 +39,7 @@ public class PolarService {
 
         // 2. Create Checkout Session
         String url = POLAR_API_URL + "/checkouts/custom/sessions";
+        log.info("Creating checkout session for user {} with priceId {}", user.getEmail(), priceId);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(polarAccessToken);
@@ -90,11 +91,43 @@ public class PolarService {
             if (response.getBody() != null && response.getBody().containsKey("id")) {
                 return (String) response.getBody().get("id");
             }
+            log.error("Polar create customer response missing ID: {}", response.getBody());
             throw new RuntimeException("No Customer ID in response");
+        } catch (org.springframework.web.client.HttpClientErrorException.Conflict e) {
+            log.info("Customer already exists in Polar, fetching existing ID for email: {}", user.getEmail());
+            return findPolarCustomerByEmail(user.getEmail());
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.error("Polar API error ({}): {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new RuntimeException("Billing service error: " + e.getResponseBodyAsString());
         } catch (Exception e) {
             log.error("Failed to create polar customer", e);
-            // Verify if customer already exists if status 409 or similar, but for now throw
             throw new RuntimeException("Billing service unavailable: " + e.getMessage());
+        }
+    }
+
+    private String findPolarCustomerByEmail(String email) {
+        String url = POLAR_API_URL + "/customers?email=" + email;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(polarAccessToken);
+
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        try {
+            var response = new org.springframework.web.client.RestTemplate().exchange(url,
+                    org.springframework.http.HttpMethod.GET, entity, Map.class);
+            var body = response.getBody();
+            if (body != null && body.containsKey("items")) {
+                @SuppressWarnings("unchecked")
+                java.util.List<Map<String, Object>> items = (java.util.List<Map<String, Object>>) body.get("items");
+                if (!items.isEmpty()) {
+                    return (String) items.get(0).get("id");
+                }
+            }
+            throw new RuntimeException("Customer not found in Polar after conflict");
+        } catch (Exception e) {
+            log.error("Failed to find polar customer by email", e);
+            throw new RuntimeException("Billing service unavailable during customer lookup: " + e.getMessage());
         }
     }
 
@@ -121,10 +154,20 @@ public class PolarService {
                     String customerId = data.get("customer_id").asText();
                     String status = data.get("status").asText();
 
-                    log.info("Updating subscription for customer {}: {}", customerId, status);
+                    // Try to get plan name (product name)
+                    String planName = null;
+                    if (data.has("product") && data.get("product").has("name")) {
+                        planName = data.get("product").get("name").asText();
+                    }
 
+                    log.info("Updating subscription for customer {}: {} (Plan: {})", customerId, status, planName);
+
+                    final String finalPlanName = planName;
                     userRepository.findByPolarCustomerId(customerId).ifPresent(user -> {
                         user.setSubscriptionStatus(mapAppStatus(status));
+                        if (finalPlanName != null) {
+                            user.setPlan(finalPlanName);
+                        }
                         userRepository.save(user);
                     });
                 } else {
